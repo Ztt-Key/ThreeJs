@@ -41,7 +41,7 @@ let pointsMaterial_init;
 let moveSpeed = 5; // 添加星星移动速度变量
 let pointGeo = [] // 添加星星几何体数组
 let nebulaMeshes = []; // 存储星云网格
-let astronaut; // 添加宇航员变量
+let BgmMain =new URL('../assets/bgm/mixkit-love-letter-221.mp3', import.meta.url).href
 onMounted(() => {
     container = document.getElementById('container')
     width = container.clientWidth;
@@ -59,6 +59,7 @@ onMounted(() => {
     // 初始化星云
     initNebulas()
     initAstronaut()
+    BGM()
     animate()
 })
 
@@ -122,7 +123,33 @@ const renderSpherRotate = () => {
     //材质自转
     spheres.rotation.y += 0.01;
 }
+//背景音乐
+const BGM = () => {
 
+const listener = new THREE.AudioListener();
+camera.add(listener);
+
+// 2. 创建全局 Audio 对象
+const sound = new THREE.Audio(listener);
+
+// 3. 加载音频文件
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load(BgmMain, function (buffer) {
+    sound.setBuffer( buffer );
+	sound.setLoop( true );
+	sound.setVolume( 0.5 );
+});
+sound.autoplay = true;
+sound.play();
+document.addEventListener('click', () => {
+    console.log("bgm");
+    console.log(listener.context.state);
+    if (listener.context.state === 'suspended') {
+        sound.stop()
+    }
+    sound.play(); // 播放
+});
+}
 //初始化场景的星星效果
 const initScenStart = (initZ) => {
     const geometry = new THREE.BufferGeometry();
