@@ -1,6 +1,8 @@
-# threejs
 
-## Project setup
+这是一个使用vue3+threejs的新手入门练习项目
+
+全部内容为个人喜好所做，所以没什么太大关联性，但可以作为一个很好的入门案例学习
+
 ```
 npm install
 ```
