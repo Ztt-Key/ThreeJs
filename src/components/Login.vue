@@ -3,10 +3,14 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import _ from 'lodash'
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
 //容器
 var container;
 //加载图片
@@ -42,6 +46,31 @@ let moveSpeed = 5; // 添加星星移动速度变量
 let pointGeo = [] // 添加星星几何体数组
 let nebulaMeshes = []; // 存储星云网格
 let BgmMain =new URL('../assets/bgm/mixkit-love-letter-221.mp3', import.meta.url).href
+
+// 添加射线检测器 只有这样才可以监听3D效果的图
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+// 添加点击事件处理
+const onMouseClick = (event) => {
+    // 计算鼠标在归一化设备坐标中的位置
+    const rect = render.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    // 更新射线
+    raycaster.setFromCamera(mouse, camera);
+
+    // 检测与球体的相交
+    const intersects = raycaster.intersectObject(spheres);
+
+    if (intersects.length > 0) {
+        // 点击到球体，清除所有效果并跳转
+        clearAllEffects();
+        router.push('/home');
+    }
+}
+
 onMounted(() => {
     container = document.getElementById('container')
     width = container.clientWidth;
@@ -61,7 +90,17 @@ onMounted(() => {
     initAstronaut()
     BGM()
     animate()
+    
+    // 添加点击事件监听
+    render.domElement.addEventListener('click', onMouseClick);
 })
+
+// 在组件卸载时移除事件监听
+onUnmounted(() => {
+    sound.stop()
+    clearAllEffects();
+})
+//清除全部动态效果
 
 //初始化场景
 const initScene = () => {
@@ -98,16 +137,17 @@ const initCamera = () => {
     //看向原点
     camera.lookAt(0, 0, 0);
 }
+
 //球缓存几何体
 const getCacheGeometry = () => {
-    const geometry = new THREE.SphereGeometry(50, 64, 32);
-    const sphere = new THREE.MeshPhongMaterial()
-    sphere.map = new THREE.TextureLoader().load(Image_Sphere)
-    //网格（物体，材质）
-    spheres = new THREE.Mesh(geometry, sphere)
+    const geometry = new THREE.SphereGeometry(50, 64, 32); //几何体
+    const sphere = new THREE.MeshPhongMaterial()//球体材质 = 基础材质
+    sphere.map = new THREE.TextureLoader().load(Image_Sphere)//球体贴图
+    spheres = new THREE.Mesh(geometry, sphere) //网格（物体，材质）== 将几何体和材质进行关联组成可渲染谈
     spheres.position.set(-400, 200, -200);
     scene.add(spheres)
 }
+
 //光源
 const initLight = () => {
     //环境光
@@ -123,6 +163,7 @@ const renderSpherRotate = () => {
     //材质自转
     spheres.rotation.y += 0.01;
 }
+let sound;
 //背景音乐
 const BGM = () => {
 
@@ -130,7 +171,7 @@ const listener = new THREE.AudioListener();
 camera.add(listener);
 
 // 2. 创建全局 Audio 对象
-const sound = new THREE.Audio(listener);
+ sound = new THREE.Audio(listener);
 
 // 3. 加载音频文件
 const audioLoader = new THREE.AudioLoader();
@@ -141,7 +182,7 @@ audioLoader.load(BgmMain, function (buffer) {
 });
 sound.autoplay = true;
 sound.play();
-document.addEventListener('click', () => {
+container.addEventListener('click', () => {
     console.log("bgm");
     console.log(listener.context.state);
     if (listener.context.state === 'suspended') {
@@ -159,9 +200,6 @@ const initScenStart = (initZ) => {
     const texture = new THREE.TextureLoader();
     const one = texture.load(Image_Start)
     const two = texture.load(Image_Start1)
-    //星星的数据
-
-
     //声明点的参数
     points = [
         [[0.5, 100, 0.75], one, 50],
@@ -312,6 +350,43 @@ const animate = () => {
 // 添加速度控制函数（可选）
 const setMoveSpeed = (speed) => {
     moveSpeed = speed;
+}
+
+// 添加清除所有动态效果的方法
+const clearAllEffects = () => {
+    // 停止背景音乐
+    if (sound) {
+        sound.stop();
+    }
+
+    // 清理场景中的所有对象
+    if (scene) {
+        // 清理星星
+        pointGeo.forEach(particles => {
+            scene.remove(particles);
+        });
+        pointGeo = [];
+
+        // 清理星云
+        nebulaMeshes.forEach(nebula => {
+            scene.remove(nebula);
+        });
+        nebulaMeshes = [];
+
+        // 清理球体
+        if (spheres) {
+            scene.remove(spheres);
+        }
+
+        // 清理场景
+        scene.clear();
+    }
+
+    // 清理材质
+    pointsMaterial.forEach(material => {
+        material.dispose();
+    });
+    pointsMaterial = [];
 }
 
 </script>
